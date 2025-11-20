@@ -2,20 +2,22 @@
 # Build stage
 # =========================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /app
 
-# Copy csproj từ thư mục hiện tại (src/src/)
-# Nếu bạn chạy docker build từ src/src, COPY *.csproj sẽ tìm được
-COPY *.csproj .  
+# Set working dir to /src so paths match repository layout when build context is the repo root (./src)
+WORKDIR /src
 
-# Restore các package
-RUN dotnet restore
+# Copy solution and project file(s) with explicit paths so dotnet restore can find them regardless of build context
+COPY ["src.sln", "./"]
+COPY ["src/src.csproj", "src/"]
 
-# Copy toàn bộ source code trong thư mục hiện tại
+# Restore packages for the specific project
+RUN dotnet restore "src/src.csproj"
+
+# Copy the rest of the source
 COPY . .
 
-# Build và publish ra thư mục out
-RUN dotnet publish -c Release -o /app/out
+# Build and publish the project to /app/out
+RUN dotnet publish "src/src.csproj" -c Release -o /app/out
 
 # =========================
 # Runtime stage
@@ -23,14 +25,14 @@ RUN dotnet publish -c Release -o /app/out
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
-# Copy file publish từ stage build
+# Copy published files from build stage
 COPY --from=build /app/out .
 
-# Expose port 8080 cho Render
+# Expose port 8080 for Render (or mapping)
 EXPOSE 8080
 
-# Set environment variable cho ASP.NET Core listen trên port 8080
+# Make ASP.NET Core listen on port 8080
 ENV ASPNETCORE_URLS=http://+:8080
 
-# Chạy API với tên assembly đúng
+# Run the API using the compiled assembly
 ENTRYPOINT ["dotnet", "src.dll"]
