@@ -3,21 +3,25 @@
 # =========================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
-# Set working dir to /src so paths match repository layout when build context is the repo root (./src)
+# Use /src as working directory
 WORKDIR /src
 
-# Copy solution and project file(s) with explicit paths so dotnet restore can find them regardless of build context
-COPY ["src.sln", "./"]
-COPY ["src/src.csproj", "src/"]
-
-# Restore packages for the specific project
-RUN dotnet restore "src/src.csproj"
-
-# Copy the rest of the source
+# Copy the entire build context into the image. This keeps the Dockerfile resilient
+# regardless of whether the user runs `docker build` from repo root or from the `src` folder.
 COPY . .
 
-# Build and publish the project to /app/out
-RUN dotnet publish "src/src.csproj" -c Release -o /app/out
+# Restore and publish: detect common csproj locations and use the first match.
+# This supports both contexts:
+#  - repo root (project path: src/src.csproj)
+#  - src folder (project path: src.csproj)
+RUN set -eux; \
+    if [ -f "src/src.csproj" ]; then PROJECT_PATH="src/src.csproj"; \
+    elif [ -f "src.csproj" ]; then PROJECT_PATH="src.csproj"; \
+    elif [ -f "../src/src.csproj" ]; then PROJECT_PATH="../src/src.csproj"; \
+    else echo "ERROR: .csproj not found in expected locations" >&2; exit 1; fi; \
+    echo "Using project: $PROJECT_PATH"; \
+    dotnet restore "$PROJECT_PATH"; \
+    dotnet publish "$PROJECT_PATH" -c Release -o /app/out
 
 # =========================
 # Runtime stage
