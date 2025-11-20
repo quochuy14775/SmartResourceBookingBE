@@ -1,19 +1,51 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16
+    container_name: smartbooking_postgres
+    environment:
+      - POSTGRES_USER=smartuser
+      - POSTGRES_PASSWORD=smartpass
+      - POSTGRES_DB=smartresourcebookingdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartuser -d smartresourcebookingdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Application
   api:
     build:
-      context: ./src
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/Dockerfile
+    container_name: smartbooking_api
     ports:
       - "8080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=smartresourcebookingdb;Username=smartuser;Password=smartpass;SSL Mode=Disable
+      - Jwt__Key=ThisIsASuperSecretJWTKeyForSmartResourceBooking2025!
+      - Jwt__Issuer=SmartResourceBooking
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - app-network
+    restart: unless-stopped
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  postgres_data:
 

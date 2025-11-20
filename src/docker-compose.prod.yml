@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16
+    container_name: smartbooking_postgres_prod
+    environment:
+      - POSTGRES_USER=${DB_USER:-smartuser}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
+      - POSTGRES_DB=${DB_NAME:-smartresourcebookingdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-smartuser} -d ${DB_NAME:-smartresourcebookingdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # API Application
+  api:
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+    container_name: smartbooking_api_prod
+    ports:
+      - "80:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-smartresourcebookingdb};Username=${DB_USER:-smartuser};Password=${DB_PASSWORD:-changeme};SSL Mode=Disable
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER:-SmartResourceBooking}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
