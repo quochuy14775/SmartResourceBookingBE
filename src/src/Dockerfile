@@ -21,8 +21,12 @@ WORKDIR /app
 # Copy file publish từ stage build
 COPY --from=build /app/out .
 
-# Mở port 80
-EXPOSE 80
+# Expose ports
+EXPOSE 8080
+EXPOSE 8081
 
-# Chạy API
-ENTRYPOINT ["dotnet", "SmartResourceBookingBE.dll"]
+# Set environment variable for ASP.NET Core to listen on port 8080
+ENV ASPNETCORE_URLS=http://+:8080
+
+# Chạy API với tên assembly đúng
+ENTRYPOINT ["dotnet", "src.dll"]
