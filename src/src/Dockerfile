@@ -1,14 +1,13 @@
 ﻿# Stage 1: Build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
+WORKDIR /app
 
 # Copy csproj and restore dependencies
-COPY ["src/src.csproj", "src/"]
-RUN dotnet restore "src/src.csproj"
+COPY ["src.csproj", "./"]
+RUN dotnet restore "src.csproj"
 
 # Copy everything else and build
-COPY . .
-WORKDIR "/src/src"
+COPY . ./
 RUN dotnet build "src.csproj" -c Release -o /app/build
 
 # Stage 2: Publish

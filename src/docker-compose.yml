@@ -24,8 +24,8 @@ services:
   # API Application
   api:
     build:
-      context: .
-      dockerfile: src/Dockerfile
+      context: ./src
+      dockerfile: Dockerfile
     container_name: smartbooking_api
     ports:
       - "8080:8080"
