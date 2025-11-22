@@ -68,7 +68,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:3000",
-                "https://smart-resource-booking-fe.vercel.app/"
+                "https://smart-resource-booking-fe.vercel.app"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
