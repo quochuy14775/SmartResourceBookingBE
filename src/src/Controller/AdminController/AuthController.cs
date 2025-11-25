@@ -56,12 +56,14 @@ namespace src.Controller.AdminController
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
+            var tokenLifetime = _configuration.GetValue<int>("Jwt:TokenLifetimeMinutes");
+            var expirationTime = DateTime.UtcNow.AddMinutes(tokenLifetime);
+            
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
                 audience: null, // bạn disable ValidateAudience nên để null OK
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(2),
+                expires: expirationTime,
                 signingCredentials: creds
             );
 

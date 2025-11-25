@@ -1,6 +1,4 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using src.Data;
 using src.DTOs.User;
 using src.Model;
 
@@ -13,8 +11,7 @@ public static class UserExtensions
     /// </summary>
     public static async Task<(bool Success, string? ErrorMessage, ApplicationUser? User)> CreateUserAsync(
         this UserManager<ApplicationUser> userManager,
-        CreateUserRequest request,
-        ApplicationDbContext context)
+        CreateUserRequest request)
     {
         // Kiểm tra username đã tồn tại
         var existingUser = await userManager.FindByNameAsync(request.UserName);
@@ -25,14 +22,6 @@ public static class UserExtensions
         var existingEmail = await userManager.FindByEmailAsync(request.Email);
         if (existingEmail != null)
             return (false, "Email đã được sử dụng", null);
-
-        // // Kiểm tra department nếu có
-        // if (!string.IsNullOrEmpty(request.DepartmentId))
-        // {
-        //     var department = await context.Departments.FindAsync(request.DepartmentId);
-        //     if (department == null)
-        //         return (false, "Department không tồn tại", null);
-        // }
 
         // Tạo user mới
         var user = new ApplicationUser
@@ -55,7 +44,6 @@ public static class UserExtensions
             var roleResult = await userManager.AddToRolesAsync(user, request.Roles);
             if (!roleResult.Succeeded)
             {
-                // Rollback: xóa user nếu gán role thất bại
                 await userManager.DeleteAsync(user);
                 return (false, "Không thể gán roles cho user", null);
             }
@@ -70,8 +58,7 @@ public static class UserExtensions
     public static async Task<(bool Success, string? ErrorMessage)> UpdateUserAsync(
         this UserManager<ApplicationUser> userManager,
         ApplicationUser user,
-        UpdateUserRequest request,
-        ApplicationDbContext context)
+        UpdateUserRequest request)
     {
         // Cập nhật email nếu có
         if (!string.IsNullOrEmpty(request.Email) && request.Email != user.Email)
@@ -90,18 +77,8 @@ public static class UserExtensions
         if (request.PhoneNumber != null)
             user.PhoneNumber = request.PhoneNumber;
 
-        // Cập nhật department
         if (request.DepartmentId != null)
-        {
-            if (request.DepartmentId.HasValue)
-            {
-                var department = await context.Departments.FindAsync(request.DepartmentId.Value);
-                if (department == null)
-                    return (false, "Department không tồn tại");
-
-                user.DepartmentId = request.DepartmentId;
-            }
-        }
+            user.DepartmentId = request.DepartmentId;
 
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -143,15 +120,13 @@ public static class UserExtensions
     /// <summary>
     /// Lấy thông tin chi tiết user
     /// </summary>
-    public static async Task<UserResponse?> ToUserResponseAsync(
+    public static async Task<UserResponse> ToUserResponseAsync(
         this ApplicationUser user,
         UserManager<ApplicationUser> userManager,
-        ApplicationDbContext context)
+        IEnumerable<string> roleNames)
     {
-        var roles = await userManager.GetRolesAsync(user);
-        var department = user.DepartmentId != null
-            ? await context.Departments.FindAsync(user.DepartmentId)
-            : null;
+        var roles = roleNames.ToList();
+        var departmentName = user.Department?.Name; // Nếu muốn repo, có thể replace bằng lookup repo
 
         return new UserResponse
         {
@@ -161,8 +136,8 @@ public static class UserExtensions
             FullName = user.FullName,
             PhoneNumber = user.PhoneNumber,
             DepartmentId = user.DepartmentId,
-            DepartmentName = department?.Name,
-            Roles = roles.ToList(),
+            DepartmentName = departmentName,
+            Roles = roles,
             EmailConfirmed = user.EmailConfirmed,
             PhoneNumberConfirmed = user.PhoneNumberConfirmed,
             LockoutEnabled = user.LockoutEnabled,
@@ -190,7 +165,6 @@ public static class UserExtensions
             IsLockedOut = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow
         };
     }
-
 
     /// <summary>
     /// Lock/Unlock user
@@ -226,5 +200,3 @@ public static class UserExtensions
         return (true, null);
     }
 }
-
-

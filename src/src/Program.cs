@@ -7,13 +7,17 @@ using Microsoft.OpenApi.Models;
 using src.Data;
 using src.Model;
 using System.Text;
+using src.Extensions;
+using src.Repositories;
 
 // --------------------
 // Build Builder
 // --------------------
 var builder = WebApplication.CreateBuilder(args);
 
-
+// Dependency Injection - Repository & UoW
+builder.Services.AddRepository();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 // --------------------
 // DbContext
